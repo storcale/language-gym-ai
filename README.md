@@ -5,3 +5,9 @@ Used in https://uk.language-gym.com/ to defeat the boxing game
 I am planning on expanding to other languages as spanish and other games
 press escape to terminate the AI (takes about 5 seconds)
 Sometimes the AI doesnt work so you have to click yourself, and may make you lose some hearts (not fixed yet)
+
+Numbers demo:
+<video controls src="Demo Numbers Spanish.mp4" title="Numbers"></video>
+
+Just started translation:
+<video controls src="Demo Translation Spanish.mp4" title="Translation"></video>

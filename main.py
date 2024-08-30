@@ -8,6 +8,7 @@ import json
 import keyboard
 import time
 from deep_translator import GoogleTranslator
+from difflib import get_close_matches
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
@@ -64,23 +65,29 @@ def process_number_game():
         number_word = None
 
     if number_word:
-        for i, word in enumerate(words_data['text']):
-            if word.lower() == number_word:
-                # Get the bounding box for the word
-                x1, y1, x2, y2 = (words_data['left'][i], words_data['top'][i],
-                                  words_data['left'][i] + words_data['width'][i],
-                                  words_data['top'][i] + words_data['height'][i])
-                
-                # Center of the bounding box
-                x_click = x_words + (x1 + x2) // 2
-                y_click = y_words + (y1 + y2) // 2
+        # Find the best matching word in the detected words
+        best_match = get_close_matches(number_word, [w.lower() for w in words_data['text']], n=1, cutoff=0.8)
+        if best_match:
+            best_word = best_match[0]
+            for i, word in enumerate(words_data['text']):
+                if word.lower() == best_word:
+                    # Get the bounding box for the word
+                    x1, y1, x2, y2 = (words_data['left'][i], words_data['top'][i],
+                                      words_data['left'][i] + words_data['width'][i],
+                                      words_data['top'][i] + words_data['height'][i])
+                    
+                    # Center of the bounding box
+                    x_click = x_words + (x1 + x2) // 2
+                    y_click = y_words + (y1 + y2) // 2
 
-                # Click on the correct word
-                pyautogui.click(x=x_click, y=y_click)
-                print(f"Clicked on {number_word} at ({x_click}, {y_click})")
-                break
+                    # Click on the correct word
+                    pyautogui.click(x=x_click, y=y_click)
+                    print(f"Clicked on {best_word} at ({x_click}, {y_click})")
+                    break
+            else:
+                print("Could not find the correct word to click.")
         else:
-            print("Could not find the correct word to click.")
+            print("No close match found for the number word.")
     else:
         print("Could not find a matching word to click.")
 
@@ -122,23 +129,29 @@ def process_translation_game():
     cleaned_translated_text = re.sub(r'[^a-zA-Z\s]', '', translated_text.lower())
 
     if cleaned_translated_text:
-        for i, word in enumerate(words_data['text']):
-            if word.lower() == cleaned_translated_text:
-                # Get the bounding box for the word
-                x1, y1, x2, y2 = (words_data['left'][i], words_data['top'][i],
-                                  words_data['left'][i] + words_data['width'][i],
-                                  words_data['top'][i] + words_data['height'][i])
-                
-                # Center of the bounding box
-                x_click = x_words + (x1 + x2) // 2
-                y_click = y_words + (y1 + y2) // 2
+        # Find the best matching word in the detected words
+        best_match = get_close_matches(cleaned_translated_text, [w.lower() for w in words_data['text']], n=1, cutoff=0.8)
+        if best_match:
+            best_word = best_match[0]
+            for i, word in enumerate(words_data['text']):
+                if word.lower() == best_word:
+                    # Get the bounding box for the word
+                    x1, y1, x2, y2 = (words_data['left'][i], words_data['top'][i],
+                                      words_data['left'][i] + words_data['width'][i],
+                                      words_data['top'][i] + words_data['height'][i])
+                    
+                    # Center of the bounding box
+                    x_click = x_words + (x1 + x2) // 2
+                    y_click = y_words + (y1 + y2) // 2
 
-                # Click on the correct word
-                pyautogui.click(x=x_click, y=y_click)
-                print(f"Clicked on {cleaned_translated_text} at ({x_click}, {y_click})")
-                break
+                    # Click on the correct word
+                    pyautogui.click(x=x_click, y=y_click)
+                    print(f"Clicked on {best_word} at ({x_click}, {y_click})")
+                    break
+            else:
+                print("Could not find the correct translation to click.")
         else:
-            print("Could not find the correct translation to click.")
+            print("No close match found for the translation.")
     else:
         print("Could not find a matching translation to click.")
 
@@ -151,7 +164,7 @@ def main():
             print("Selected Number Game.")
             while not keyboard.is_pressed('esc'):
                 process_number_game()
-                time.sleep(0.5)
+                time.sleep(0.1)
             print("Escape key pressed. Exiting Number Game...")
         
         elif game_choice == "translation":
