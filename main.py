@@ -1,25 +1,35 @@
 import pyautogui
 import pytesseract
 from PIL import Image
+import numpy as np
+import cv2
 import re
+import json
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
-# Example values for the number in the middle (adjust based on your screen)
-x_number = 900  # X coordinate for the number
-y_number = 350  # Y coordinate for the number
-width_number = 100  # Width of the box around the number
-height_number = 100  # Height of the box around the number
+# Load numbers dictionary from JSON file
+with open('numbers_dict.json', 'r', encoding='utf-8') as f:
+    numbers_dict = json.load(f)
+
+# Invert the dictionary to map numbers to words
+number_to_word = {v: k for k, v in numbers_dict.items()}
+
+# Example values for the number in the middle
+x_number = 900
+y_number = 350
+width_number = 100
+height_number = 100
 
 # Capture the number
 screenshot_number = pyautogui.screenshot(region=(x_number, y_number, width_number, height_number))
 screenshot_number.save("number.png")
 
-# Example values for the words (all the white signs with letters)
-x_words = 400  # X coordinate for the words region
-y_words = 590  # Y coordinate for the words region
-width_words = 1100  # Width to cover all the white signs
-height_words = 100  # Height to cover the white signs
+# Example values for the words
+x_words = 400
+y_words = 590
+width_words = 1100
+height_words = 100
 
 # Capture the words
 screenshot_words = pyautogui.screenshot(region=(x_words, y_words, width_words, height_words))
@@ -33,71 +43,43 @@ words_image = Image.open("words.png")
 number_text = pytesseract.image_to_string(number_image, config='--psm 6')
 print("Extracted Number:", number_text.strip())
 
-# Extract text from the words image
-words_text = pytesseract.image_to_string(words_image, config='--psm 6')
-print("Extracted Words:", words_text.strip())
+# Extract bounding boxes and text from the words image
+words_data = pytesseract.image_to_data(words_image, output_type=pytesseract.Output.DICT)
+print("Words Data:", words_data)
 
-# Step 1: Clean the OCR Output
-cleaned_number_text = re.sub(r'[^a-zA-Z]', '', number_text.strip().lower())
-cleaned_words_text = re.sub(r'[^a-zA-Z\s]', '', words_text.strip().lower())
+# Clean the extracted number text
+cleaned_number_text = re.sub(r'[^0-9]', '', number_text.strip().lower())
 
-print("Cleaned Number:", cleaned_number_text)
-print("Cleaned Words:", cleaned_words_text)
+try:
+    number_value = int(cleaned_number_text)
+    if number_value in number_to_word:
+        number_word = number_to_word[number_value]
+        print(f"Matched Number Word: {number_word}")
+    else:
+        print("Number out of expected range.")
+        number_word = None
+except ValueError:
+    print("Extracted number is not a valid integer.")
+    number_word = None
 
-# Step 2: Match the Extracted Number to the Correct Word
-# Define a dictionary for number words in Spanish
-numbers_dict = {
-    "uno": 1,
-    "dos": 2,
-    "tres": 3,
-    "cuatro": 4,
-    "cinco": 5,
-    "seis": 6,
-    "siete": 7,
-    "ocho": 8,
-    "nueve": 9,
-    "diez": 10,
-    "once": 11,
-    "doce": 12,
-    "trece": 13,
-    "catorce": 14,
-    "quince": 15,
-    "dieciseis": 16,
-    "diecisiete": 17,
-    "dieciocho": 18,
-    "diecinueve": 19,
-    "veinte": 20,
-}
-
-# Check if the extracted number matches a number in Spanish
-if cleaned_number_text in numbers_dict:
-    number_value = numbers_dict[cleaned_number_text]
-    print(f"Matched Number: {number_value}")
-else:
-    print("Number not recognized.")
-    number_value = None
-
-# Step 3: Identify the Correct Word Location and Click
-if number_value is not None:
-    for word in numbers_dict:
-        if word in cleaned_words_text:
-            word_position = cleaned_words_text.index(word)
-            print(f"Found {word} at position {word_position}")
+if number_word:
+    # Extract bounding box information for each word
+    for i, word in enumerate(words_data['text']):
+        if word.lower() == number_word:
+            # Get the bounding box for the word
+            x1, y1, x2, y2 = (words_data['left'][i], words_data['top'][i],
+                              words_data['left'][i] + words_data['width'][i],
+                              words_data['top'][i] + words_data['height'][i])
             
-            # Assuming the words are laid out evenly, calculate the x position
-            x_start = x_words
-            x_spacing = 275  # Estimated width of each box
-            word_index = cleaned_words_text.split().index(word)
-
-            # Calculate the x position for the correct word
-            x_click = x_start + word_index * x_spacing
-            y_click = y_words + height_words // 2  # Vertical center of the word box
+            # Center of the bounding box
+            x_click = x_words + (x1 + x2) // 2
+            y_click = y_words + (y1 + y2) // 2
 
             # Click on the correct word
             pyautogui.click(x=x_click, y=y_click)
-            print(f"Clicked on {word} at ({x_click}, {y_click})")
+            print(f"Clicked on {number_word} at ({x_click}, {y_click})")
             break
     else:
-        print("Correct word not found in extracted words.")
+        print("Could not find the correct word to click.")
 else:
     print("Could not find a matching word to click.")
